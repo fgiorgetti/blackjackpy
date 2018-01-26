@@ -83,6 +83,24 @@ class Player(object):
         self.money = 1000
         self.reset()
 
+    def show_hand(self, handidx):
+        for hand in self.hands:
+            if hand.insurance > 0:
+                side_bet_str = '- Insurance bet: %8.2f ' % hand.insurance
+            else:
+                side_bet_str = ''
+
+            # Show player info
+            print('%-16s - Hand %d ( %2d - %-10s ) = ' % (self.name, handidx, hand.points, hand.hand_state), end='')
+            for card in hand.cards:
+                card.printCard()
+                print(' ', end='')
+            print()
+
+            print('Cash $%8.2f - Bet $%8.2f %s' % (self.money, hand.bet, side_bet_str))
+
+            handidx += 1
+
     def reset(self):
         self.hands = []  # One or more sets of cards (when splitting)
         self.player_state = Player.player_states[Player.state_wait_nxt];
@@ -127,7 +145,7 @@ class Player(object):
             cmds = self.allowed_commands()
 
             # If double-down allowed in this hand
-            if not hand.double:
+            if not hand.double and self.money > hand.bet + hand.insurance:
                 cmds.append('D')
 
             print('%-16s - Allowed moves' % self.name, end='')
@@ -256,6 +274,16 @@ class Dealer(object):
         Dealer.face_down = True
         Dealer.has_blackjack = False
 
+    def show_hand(self):
+        print()
+        # Show dealer info
+        print('%-16s - Hand   ( %2d - %-10s ) = ' % ('Dealer', self.hand.points, self.hand.hand_state),
+              end='')
+        for card in self.hand.cards:
+            card.printCard() if card.face_up == True or self.face_down == False else print("???", end='')
+            print(' ', end='')
+        print()
+
     @staticmethod
     def check_insurance():
         has_ace = False
@@ -364,30 +392,12 @@ class Table(object):
         if self.state not in [ Table.state_wait_player, Table.state_results ]:
             return
 
-        print()
-        print('%16s - Hand   ( %2d - %-10s ) = ' % ('Dealer', self.dealer.hand.points, self.dealer.hand.hand_state),
-              end='')
-        for card in self.dealer.hand.cards:
-            card.printCard() if card.face_up == True or self.dealer.face_down == False else print("???", end='')
-            print(' ', end='')
-        print()
+        # Prints the dealer's hand
+        self.dealer.show_hand()
 
         for player in self.players:
             handidx = 1
-            for hand in player.hands:
-                if hand.insurance > 0:
-                    side_bet_str = '- Insurance bet: %8.2f ' % hand.insurance
-                else:
-                    side_bet_str = ''
-                print('%16s [ %22s ] - Bet %8.2f %s- Hand %d ( %2d - %-10s ) = ' % (player.name, player.player_state,
-                                                                                   hand.bet, side_bet_str,
-                                                                                   handidx, hand.points,
-                                                                                   hand.hand_state), end='')
-                for card in hand.cards:
-                    card.printCard()
-                    print(' ', end='')
-                print()
-                handidx += 1
+            player.show_hand(handidx)
 
         print()
         time.sleep(1)
