@@ -5,7 +5,6 @@ import time
 import os
 import random
 
-
 class Deck(object):
     def __init__(self):
         self.initDeck()
@@ -97,7 +96,7 @@ class Player(object):
                 print(' ', end='')
             print()
 
-            print('Cash $%8.2f - Bet $%8.2f %s' % (self.money, hand.bet, side_bet_str))
+            print('%23s $%8.2f - Bet $%8.2f %s' % ("Cash", self.money, hand.bet, side_bet_str))
 
             handidx += 1
 
@@ -280,7 +279,7 @@ class Dealer(object):
         print('%-16s - Hand   ( %2d - %-10s ) = ' % ('Dealer', self.hand.points, self.hand.hand_state),
               end='')
         for card in self.hand.cards:
-            card.printCard() if card.face_up == True or self.face_down == False else print("???", end='')
+            card.printCard() if card.face_up or not self.face_down else print("???", end='')
             print(' ', end='')
         print()
 
@@ -483,7 +482,7 @@ class Table(object):
         # Check winning hands
         winning_hands = [ ]
 
-        if Dealer.hand.points == 21:
+        if Dealer.hand.points == 21 and len(Dealer.hand.cards) == 2:
             winning_hands.append(Dealer.hand)
             Dealer.hand.hand_state = Hand.state_won
         for player in self.players:
@@ -491,7 +490,7 @@ class Table(object):
                 if hand.hand_state == Hand.state_busted:
                     continue
 
-                if hand.hand_state in [ Hand.state_blackjack, Hand.state_21 ]:
+                if hand.hand_state in [Hand.state_blackjack, Hand.state_21] and len(hand.cards) == 2:
                     # Paying winners
                     if Dealer.hand.points != 21:
                         Dealer.hand.hand_state = Hand.state_lost
@@ -505,24 +504,26 @@ class Table(object):
                     hand.hand_state = Hand.state_lost
 
         # If no blackjack or 21, check highest scores that were not busted
-        if len(winning_hands) > 0:
+        hi_score = 0
+        if Dealer.hand.points == 21:
             self.new_match()
             return;
-
-        hi_score = 0
-        
-        # Checking if dealer won
-        if Dealer.hand.points < 21:
+        elif Dealer.hand.points > 21:
+            Dealer.hand.hand_state = Hand.state_busted
+        else:
             hi_score = Dealer.hand.points
-            Dealer.hand.hand_state = Hand.state_won
 
         # Defining and paying winners
+        num_losses = 0
         for player in self.players:
             for hand in player.hands:
                 if hand.hand_state == Hand.state_busted:
+                    num_losses += 1
                     continue
 
-                if hand.points > hi_score:
+                winning_hand = hand.points == 21 and len(hand.cards) == 2
+
+                if hand.points > hi_score and not winning_hand:
                     hand.hand_state = Hand.state_won
                     player.money += hand.bet * 2
                 elif hand.points == hi_score:
@@ -530,6 +531,10 @@ class Table(object):
                     player.money += hand.bet
                 else:
                     hand.hand_state = Hand.state_lost
+                    num_losses += 1
+
+        if Dealer.hand.points < 21 and num_losses > 0:
+            Dealer.hand.hand_state = Hand.state_won
 
         self.new_match()
 
